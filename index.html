@@ -1,0 +1,1956 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Pulse — System Monitor</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  /* ============================================================
+     THEME & RESET
+     ============================================================ */
+  :root {
+    --bg-0: #07090f;
+    --bg-1: #0d111c;
+    --bg-2: #131826;
+    --bg-3: #1a2138;
+    --line: rgba(255, 255, 255, 0.06);
+    --line-strong: rgba(255, 255, 255, 0.12);
+    --text-0: #f5f7fb;
+    --text-1: #c2c8d6;
+    --text-2: #7a8295;
+    --text-3: #4a5168;
+
+    --accent: #5b8def;
+    --accent-2: #00d4ff;
+    --ok: #10d39c;
+    --warn: #f5b945;
+    --crit: #ef5b6b;
+
+    --grad-cool: linear-gradient(135deg, #5b8def 0%, #00d4ff 100%);
+    --grad-ok: linear-gradient(135deg, #10d39c 0%, #34d399 100%);
+    --grad-warn: linear-gradient(135deg, #f5b945 0%, #f59e0b 100%);
+    --grad-crit: linear-gradient(135deg, #ef5b6b 0%, #f43f5e 100%);
+    --grad-violet: linear-gradient(135deg, #8b5cf6 0%, #d946ef 100%);
+
+    --shadow-soft: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
+    --shadow-glow: 0 0 0 1px rgba(91, 141, 239, 0.15), 0 10px 40px -10px rgba(91, 141, 239, 0.25);
+
+    --r-sm: 10px;
+    --r-md: 14px;
+    --r-lg: 20px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    height: 100%;
+    background: var(--bg-0);
+    color: var(--text-0);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-size: 14px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    overflow-x: hidden;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background:
+      radial-gradient(circle at 15% 20%, rgba(91, 141, 239, 0.08), transparent 40%),
+      radial-gradient(circle at 85% 75%, rgba(0, 212, 255, 0.06), transparent 45%),
+      radial-gradient(circle at 50% 100%, rgba(139, 92, 246, 0.05), transparent 50%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* Subtle grid texture */
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(255, 255, 255, 0.015) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255, 255, 255, 0.015) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* ============================================================
+     LAYOUT
+     ============================================================ */
+  .app {
+    position: relative;
+    z-index: 1;
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 24px 28px 80px;
+  }
+
+  /* HEADER */
+  .header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 18px 24px;
+    background: linear-gradient(180deg, rgba(26, 33, 56, 0.6), rgba(13, 17, 28, 0.6));
+    border: 1px solid var(--line);
+    border-radius: var(--r-lg);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    margin-bottom: 24px;
+  }
+
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+
+  .logo {
+    width: 42px;
+    height: 42px;
+    border-radius: 12px;
+    background: var(--grad-cool);
+    display: grid;
+    place-items: center;
+    box-shadow: 0 0 24px rgba(91, 141, 239, 0.4);
+    position: relative;
+  }
+
+  .logo::after {
+    content: '';
+    position: absolute;
+    inset: -3px;
+    border-radius: 14px;
+    background: var(--grad-cool);
+    opacity: 0.3;
+    filter: blur(8px);
+    z-index: -1;
+  }
+
+  .logo svg { width: 22px; height: 22px; color: white; }
+
+  .brand-text h1 {
+    font-size: 18px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+  }
+
+  .brand-text p {
+    font-size: 12px;
+    color: var(--text-2);
+    margin-top: 2px;
+  }
+
+  .header-meta {
+    display: flex;
+    align-items: center;
+    gap: 22px;
+  }
+
+  .header-stat {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+  }
+
+  .header-stat .label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-2);
+    margin-bottom: 4px;
+  }
+
+  .header-stat .value {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-0);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .pulse-dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--ok);
+    box-shadow: 0 0 12px var(--ok);
+    margin-right: 6px;
+    animation: pulse 1.6s ease-in-out infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.4; transform: scale(0.85); }
+  }
+
+  /* ============================================================
+     SUMMARY STRIP
+     ============================================================ */
+  .summary {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 14px;
+    margin-bottom: 22px;
+  }
+
+  .summary-card {
+    background: linear-gradient(180deg, rgba(26, 33, 56, 0.5), rgba(13, 17, 28, 0.5));
+    border: 1px solid var(--line);
+    border-radius: var(--r-md);
+    padding: 16px 18px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    transition: all 0.25s ease;
+  }
+
+  .summary-card:hover {
+    border-color: var(--line-strong);
+    transform: translateY(-1px);
+  }
+
+  .summary-icon {
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
+    display: grid;
+    place-items: center;
+    flex-shrink: 0;
+  }
+
+  .summary-icon svg { width: 18px; height: 18px; color: white; }
+
+  .summary-icon.cpu { background: var(--grad-cool); }
+  .summary-icon.ram { background: var(--grad-violet); }
+  .summary-icon.disk { background: var(--grad-ok); }
+  .summary-icon.net { background: var(--grad-warn); }
+
+  .summary-data .label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-2);
+    margin-bottom: 2px;
+  }
+
+  .summary-data .value {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text-0);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .summary-data .value .unit {
+    font-size: 12px;
+    color: var(--text-2);
+    font-weight: 500;
+    margin-left: 2px;
+  }
+
+  /* ============================================================
+     GRID OF METRIC CARDS
+     ============================================================ */
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 18px;
+  }
+
+  .card {
+    background: linear-gradient(180deg, rgba(26, 33, 56, 0.55), rgba(13, 17, 28, 0.55));
+    border: 1px solid var(--line);
+    border-radius: var(--r-lg);
+    padding: 22px;
+    position: relative;
+    overflow: hidden;
+    transition: border-color 0.25s ease, transform 0.25s ease;
+    backdrop-filter: blur(10px);
+  }
+
+  .card:hover {
+    border-color: var(--line-strong);
+  }
+
+  .card.wide { grid-column: span 2; }
+  .card.tall { grid-row: span 2; }
+
+  .card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 18px;
+  }
+
+  .card-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-1);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+
+  .card-title .dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+  }
+
+  .card-tag {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text-3);
+    padding: 4px 8px;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.02);
+  }
+
+  /* GAUGE (Canvas circular) */
+  .gauge-wrap {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    margin: 8px 0 14px;
+  }
+
+  .gauge {
+    position: relative;
+  }
+
+  .gauge-center {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    text-align: center;
+  }
+
+  .gauge-value {
+    font-size: 30px;
+    font-weight: 700;
+    color: var(--text-0);
+    letter-spacing: -0.02em;
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+  }
+
+  .gauge-value .unit {
+    font-size: 14px;
+    color: var(--text-2);
+    font-weight: 500;
+  }
+
+  .gauge-label {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text-2);
+    margin-top: 6px;
+  }
+
+  /* BARS */
+  .bar-block {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .bar-row {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .bar-meta {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+  }
+
+  .bar-meta .name { color: var(--text-1); font-weight: 500; }
+  .bar-meta .val { color: var(--text-0); font-weight: 600; font-variant-numeric: tabular-nums; }
+
+  .bar {
+    width: 100%;
+    height: 8px;
+    background: rgba(255, 255, 255, 0.04);
+    border-radius: 999px;
+    overflow: hidden;
+    position: relative;
+  }
+
+  .bar-fill {
+    height: 100%;
+    width: 0%;
+    background: var(--grad-cool);
+    border-radius: 999px;
+    transition: width 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+    position: relative;
+  }
+
+  .bar-fill::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+    animation: shimmer 2.5s linear infinite;
+  }
+
+  @keyframes shimmer {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+  }
+
+  /* CPU cores */
+  .cores {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
+    gap: 8px;
+    margin-top: 8px;
+  }
+
+  .core {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 8px 6px;
+    text-align: center;
+    font-size: 10px;
+    color: var(--text-2);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .core .core-num {
+    font-weight: 700;
+    color: var(--text-1);
+    font-size: 10px;
+    margin-bottom: 4px;
+  }
+
+  .core .core-val {
+    font-weight: 700;
+    color: var(--text-0);
+    font-size: 14px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .core .core-fill {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 0%;
+    background: var(--grad-cool);
+    opacity: 0.25;
+    transition: height 0.5s ease;
+  }
+
+  /* Network sparkline */
+  .spark {
+    width: 100%;
+    height: 60px;
+    margin-top: 12px;
+    display: block;
+  }
+
+  .net-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-top: 8px;
+  }
+
+  .net-block {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 12px;
+  }
+
+  .net-block .net-label {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-2);
+    margin-bottom: 4px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+
+  .net-block .net-value {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text-0);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .net-block .net-value .unit {
+    font-size: 11px;
+    color: var(--text-2);
+    font-weight: 500;
+    margin-left: 3px;
+  }
+
+  .arrow-up { color: var(--ok); }
+  .arrow-down { color: var(--accent-2); }
+
+  /* Battery */
+  .battery {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+  }
+
+  .battery-icon {
+    position: relative;
+    width: 90px;
+    height: 42px;
+    flex-shrink: 0;
+  }
+
+  .battery-body {
+    width: 100%;
+    height: 100%;
+    border: 2px solid var(--text-2);
+    border-radius: 6px;
+    padding: 3px;
+    position: relative;
+  }
+
+  .battery-tip {
+    position: absolute;
+    right: -4px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 4px;
+    height: 16px;
+    background: var(--text-2);
+    border-radius: 0 2px 2px 0;
+  }
+
+  .battery-fill {
+    height: 100%;
+    width: 50%;
+    background: var(--grad-ok);
+    border-radius: 3px;
+    transition: width 0.6s cubic-bezier(0.16, 1, 0.3, 1), background 0.4s ease;
+  }
+
+  .battery-info .pct {
+    font-size: 36px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .battery-info .status {
+    font-size: 12px;
+    color: var(--text-2);
+    margin-top: 2px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+
+  /* DISK */
+  .disk-info {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    margin: 8px 0 12px;
+  }
+
+  .disk-info .used {
+    font-size: 28px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .disk-info .total {
+    font-size: 13px;
+    color: var(--text-2);
+  }
+
+  .disk-io {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-top: 14px;
+  }
+
+  .io-block {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 10px 12px;
+  }
+
+  .io-block .io-label {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-2);
+    margin-bottom: 3px;
+  }
+
+  .io-block .io-value {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text-0);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .io-block .io-value .unit {
+    font-size: 11px;
+    color: var(--text-2);
+    font-weight: 500;
+  }
+
+  /* Temp */
+  .temp-wrap {
+    text-align: center;
+    margin: 12px 0;
+  }
+
+  .temp-value {
+    font-size: 42px;
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    font-variant-numeric: tabular-nums;
+    background: var(--grad-cool);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .temp-value .unit {
+    font-size: 20px;
+    color: var(--text-2);
+    -webkit-text-fill-color: var(--text-2);
+    font-weight: 500;
+    margin-left: 2px;
+  }
+
+  .temp-bar {
+    width: 100%;
+    height: 6px;
+    background: rgba(255, 255, 255, 0.04);
+    border-radius: 999px;
+    overflow: hidden;
+    margin-top: 14px;
+  }
+
+  .temp-bar-fill {
+    height: 100%;
+    width: 0%;
+    background: var(--grad-cool);
+    border-radius: 999px;
+    transition: width 0.6s ease, background 0.4s ease;
+  }
+
+  /* Footer info */
+  .system-info {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 4px;
+  }
+
+  .info-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+  }
+
+  .info-row .k { color: var(--text-2); }
+  .info-row .v { color: var(--text-0); font-weight: 500; font-variant-numeric: tabular-nums; }
+
+  /* Note about simulation */
+  .sim-note {
+    font-size: 10px;
+    color: var(--text-3);
+    margin-top: 10px;
+    font-style: italic;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .sim-note::before {
+    content: 'ⓘ';
+    color: var(--text-3);
+    font-style: normal;
+  }
+
+  /* ============================================================
+     FLOATING TIPS WIDGET
+     ============================================================ */
+  .tips {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    width: 340px;
+    z-index: 100;
+  }
+
+  .tips-card {
+    background: linear-gradient(180deg, rgba(26, 33, 56, 0.85), rgba(13, 17, 28, 0.92));
+    border: 1px solid var(--line-strong);
+    border-radius: var(--r-md);
+    padding: 14px 16px;
+    box-shadow: var(--shadow-soft);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .tips-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: var(--r-md);
+    padding: 1px;
+    background: linear-gradient(135deg, var(--accent), transparent 50%, var(--accent-2));
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    opacity: 0.5;
+    pointer-events: none;
+  }
+
+  .tips-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+
+  .tips-sparkle {
+    width: 22px;
+    height: 22px;
+    border-radius: 7px;
+    background: var(--grad-violet);
+    display: grid;
+    place-items: center;
+    flex-shrink: 0;
+  }
+
+  .tips-sparkle svg { width: 12px; height: 12px; color: white; }
+
+  .tips-title {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text-1);
+    font-weight: 600;
+  }
+
+  .tips-priority {
+    margin-left: auto;
+    font-size: 10px;
+    padding: 2px 7px;
+    border-radius: 999px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-weight: 600;
+  }
+
+  .tips-priority.info { background: rgba(91, 141, 239, 0.15); color: var(--accent); }
+  .tips-priority.warn { background: rgba(245, 185, 69, 0.15); color: var(--warn); }
+  .tips-priority.crit { background: rgba(239, 91, 107, 0.15); color: var(--crit); }
+  .tips-priority.ok { background: rgba(16, 211, 156, 0.15); color: var(--ok); }
+
+  .tips-text {
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--text-0);
+    opacity: 1;
+    transition: opacity 0.4s ease, transform 0.4s ease;
+  }
+
+  .tips-text.fade {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+
+  .tips-timestamp {
+    font-size: 10px;
+    color: var(--text-3);
+    margin-top: 8px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .tips-timestamp .live-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--ok);
+    box-shadow: 0 0 8px var(--ok);
+    animation: pulse 1.6s ease-in-out infinite;
+  }
+
+  /* ============================================================
+     SIDEBAR NAV (added with Pro upgrade)
+     ============================================================ */
+  .layout { display: flex; min-height: 100vh; }
+
+  .sidebar {
+    width: 240px;
+    flex-shrink: 0;
+    background: linear-gradient(180deg, rgba(13, 17, 28, 0.95), rgba(7, 9, 15, 0.95));
+    border-right: 1px solid var(--line);
+    padding: 24px 18px;
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    z-index: 10;
+  }
+
+  .sidebar-brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 4px 8px 22px;
+    border-bottom: 1px solid var(--line);
+    margin-bottom: 18px;
+  }
+
+  .sidebar-brand .logo { width: 36px; height: 36px; border-radius: 10px; }
+  .sidebar-brand .logo svg { width: 18px; height: 18px; }
+  .sidebar-brand h2 { font-size: 17px; font-weight: 700; letter-spacing: -0.02em; }
+  .sidebar-brand .plan-tag {
+    display: inline-block;
+    margin-top: 3px;
+    font-size: 9px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    padding: 2px 6px;
+    background: rgba(91, 141, 239, 0.15);
+    color: var(--accent);
+    border-radius: 4px;
+    font-weight: 600;
+  }
+
+  .nav-section { margin-bottom: 22px; }
+
+  .nav-label {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text-3);
+    padding: 0 10px 8px;
+    font-weight: 600;
+  }
+
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 10px;
+    border-radius: 8px;
+    color: var(--text-1);
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 500;
+    margin-bottom: 2px;
+    transition: all 0.15s ease;
+    position: relative;
+  }
+
+  .nav-item:hover {
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--text-0);
+  }
+
+  .nav-item.active {
+    background: rgba(91, 141, 239, 0.1);
+    color: var(--accent);
+  }
+
+  .nav-item.active::before {
+    content: '';
+    position: absolute;
+    left: -18px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 3px;
+    height: 18px;
+    background: var(--accent);
+    border-radius: 0 3px 3px 0;
+  }
+
+  .nav-item svg { width: 16px; height: 16px; flex-shrink: 0; }
+  .nav-item .badge {
+    margin-left: auto;
+    font-size: 9px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    background: rgba(245, 185, 69, 0.15);
+    color: var(--warn);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .sidebar-upgrade {
+    margin-top: auto;
+    background: linear-gradient(135deg, rgba(91, 141, 239, 0.12), rgba(0, 212, 255, 0.08));
+    border: 1px solid rgba(91, 141, 239, 0.2);
+    border-radius: 12px;
+    padding: 14px;
+  }
+
+  .sidebar-upgrade h4 { font-size: 12px; font-weight: 700; margin-bottom: 4px; }
+  .sidebar-upgrade p { font-size: 11px; color: var(--text-2); margin-bottom: 10px; line-height: 1.4; }
+  .sidebar-upgrade a {
+    display: block;
+    text-align: center;
+    background: var(--grad-cool);
+    color: white;
+    text-decoration: none;
+    padding: 7px;
+    border-radius: 7px;
+    font-size: 12px;
+    font-weight: 600;
+  }
+
+  .main-content {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .mobile-menu-btn { display: none; }
+
+  /* ============================================================
+     RESPONSIVE
+     ============================================================ */
+  @media (max-width: 1100px) {
+    .grid { grid-template-columns: repeat(2, 1fr); }
+    .card.wide { grid-column: span 2; }
+    .summary { grid-template-columns: repeat(2, 1fr); }
+  }
+
+  @media (max-width: 900px) {
+    .sidebar {
+      position: fixed;
+      left: -260px;
+      top: 0;
+      transition: left 0.25s ease;
+    }
+    .sidebar.open { left: 0; }
+    .mobile-menu-btn {
+      display: grid;
+      place-items: center;
+      position: fixed;
+      top: 14px;
+      left: 14px;
+      width: 38px;
+      height: 38px;
+      background: var(--bg-2);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      z-index: 50;
+      cursor: pointer;
+      color: var(--text-0);
+    }
+    .mobile-menu-btn svg { width: 18px; height: 18px; }
+    .main-content { padding-top: 60px; }
+  }
+
+  @media (max-width: 720px) {
+    .app { padding: 16px; }
+    .grid { grid-template-columns: 1fr; }
+    .card.wide, .card.tall { grid-column: auto; grid-row: auto; }
+    .summary { grid-template-columns: 1fr; }
+    .header { flex-direction: column; align-items: flex-start; gap: 12px; }
+    .header-meta { width: 100%; justify-content: space-between; }
+    .tips { width: calc(100% - 32px); right: 16px; bottom: 16px; }
+  }
+</style>
+</head>
+<body>
+
+<button class="mobile-menu-btn" onclick="document.querySelector('.sidebar').classList.toggle('open')" aria-label="Menu">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/>
+  </svg>
+</button>
+
+<div class="layout">
+
+  <!-- ===================== SIDEBAR ===================== -->
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <div class="logo">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+        </svg>
+      </div>
+      <div>
+        <h2>Pulse</h2>
+        <span class="plan-tag">Free</span>
+      </div>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-label">Monitor</div>
+      <a href="index.html" class="nav-item active">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
+        </svg>
+        Dashboard
+      </a>
+      <a href="pro.html" class="nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+        </svg>
+        Pro Insights
+        <span class="badge">PRO</span>
+      </a>
+      <a href="mobile.html" class="nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/>
+        </svg>
+        Mobile
+      </a>
+      <a href="team.html" class="nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+        </svg>
+        Team
+      </a>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-label">Product</div>
+      <a href="landing.html" class="nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/>
+        </svg>
+        About Pulse
+      </a>
+      <a href="#" class="nav-item" onclick="alert('Settings demo'); return false;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+        </svg>
+        Settings
+      </a>
+    </div>
+
+    <div class="sidebar-upgrade">
+      <h4>Unlock Pulse Pro</h4>
+      <p>AI insights, 30-day history, mobile alerts, unlimited PCs.</p>
+      <a href="upgrade.html">Upgrade — $4.99/mo</a>
+    </div>
+  </aside>
+
+  <div class="main-content">
+  <div class="app">
+
+  <!-- ===================== HEADER ===================== -->
+  <header class="header">
+    <div class="brand">
+      <div class="logo">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+        </svg>
+      </div>
+      <div class="brand-text">
+        <h1>Pulse <span style="font-size: 11px; font-weight: 600; padding: 2px 7px; background: rgba(91,141,239,0.12); color: var(--accent); border-radius: 4px; margin-left: 6px; vertical-align: middle;">FREE</span></h1>
+        <p>Real-time system monitor</p>
+      </div>
+    </div>
+    <div class="header-meta">
+      <div class="header-stat">
+        <span class="label"><span class="pulse-dot"></span>Status</span>
+        <span class="value" id="status">Online</span>
+      </div>
+      <div class="header-stat">
+        <span class="label">Uptime</span>
+        <span class="value" id="uptime">0h 0m</span>
+      </div>
+      <div class="header-stat">
+        <span class="label">Refresh</span>
+        <span class="value">2s</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- ===================== SUMMARY STRIP ===================== -->
+  <section class="summary">
+    <div class="summary-card">
+      <div class="summary-icon cpu">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><line x1="9" y1="2" x2="9" y2="4"/><line x1="15" y1="2" x2="15" y2="4"/><line x1="9" y1="20" x2="9" y2="22"/><line x1="15" y1="20" x2="15" y2="22"/><line x1="20" y1="9" x2="22" y2="9"/><line x1="20" y1="14" x2="22" y2="14"/><line x1="2" y1="9" x2="4" y2="9"/><line x1="2" y1="14" x2="4" y2="14"/>
+        </svg>
+      </div>
+      <div class="summary-data">
+        <div class="label">CPU</div>
+        <div class="value"><span id="sum-cpu">0</span><span class="unit">%</span></div>
+      </div>
+    </div>
+
+    <div class="summary-card">
+      <div class="summary-icon ram">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="2" y="6" width="20" height="12" rx="2"/><line x1="6" y1="10" x2="6" y2="14"/><line x1="10" y1="10" x2="10" y2="14"/><line x1="14" y1="10" x2="14" y2="14"/><line x1="18" y1="10" x2="18" y2="14"/>
+        </svg>
+      </div>
+      <div class="summary-data">
+        <div class="label">Memory</div>
+        <div class="value"><span id="sum-ram">0</span><span class="unit">%</span></div>
+      </div>
+    </div>
+
+    <div class="summary-card">
+      <div class="summary-icon disk">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/>
+        </svg>
+      </div>
+      <div class="summary-data">
+        <div class="label">Disk</div>
+        <div class="value"><span id="sum-disk">0</span><span class="unit">%</span></div>
+      </div>
+    </div>
+
+    <div class="summary-card">
+      <div class="summary-icon net">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="22" y1="12" x2="2" y2="12"/><path d="M5.45 5.11L2 12l3.45 6.89A2 2 0 0 0 7.24 20h9.53a2 2 0 0 0 1.79-1.11L22 12l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/>
+        </svg>
+      </div>
+      <div class="summary-data">
+        <div class="label">Network</div>
+        <div class="value"><span id="sum-net">0</span><span class="unit">MB/s</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== MAIN GRID ===================== -->
+  <section class="grid">
+
+    <!-- CPU CARD -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">
+          <span class="dot" style="background: var(--accent)"></span>
+          CPU
+        </div>
+        <span class="card-tag" id="cpu-model-tag">—</span>
+      </div>
+      <div class="gauge-wrap">
+        <div class="gauge">
+          <canvas id="cpu-gauge" width="200" height="200"></canvas>
+          <div class="gauge-center">
+            <div>
+              <div class="gauge-value"><span id="cpu-val">0</span><span class="unit">%</span></div>
+              <div class="gauge-label">Overall</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="cores" id="cores"></div>
+    </div>
+
+    <!-- RAM CARD -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">
+          <span class="dot" style="background: #d946ef"></span>
+          Memory
+        </div>
+        <span class="card-tag">RAM</span>
+      </div>
+      <div class="gauge-wrap">
+        <div class="gauge">
+          <canvas id="ram-gauge" width="200" height="200"></canvas>
+          <div class="gauge-center">
+            <div>
+              <div class="gauge-value"><span id="ram-pct">0</span><span class="unit">%</span></div>
+              <div class="gauge-label">In use</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="bar-block">
+        <div class="bar-row">
+          <div class="bar-meta">
+            <span class="name">Used</span>
+            <span class="val"><span id="ram-used">0.0</span> / <span id="ram-total">0.0</span> GB</span>
+          </div>
+          <div class="bar"><div class="bar-fill" id="ram-bar" style="width:0%; background: var(--grad-violet)"></div></div>
+        </div>
+      </div>
+      <div class="sim-note" id="ram-note">Live from navigator.deviceMemory + estimated heap pressure.</div>
+    </div>
+
+    <!-- GPU CARD -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">
+          <span class="dot" style="background: var(--ok)"></span>
+          GPU
+        </div>
+        <span class="card-tag">Estimated</span>
+      </div>
+      <div class="gauge-wrap">
+        <div class="gauge">
+          <canvas id="gpu-gauge" width="200" height="200"></canvas>
+          <div class="gauge-center">
+            <div>
+              <div class="gauge-value"><span id="gpu-val">0</span><span class="unit">%</span></div>
+              <div class="gauge-label">Utilization</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="system-info">
+        <div class="info-row"><span class="k">VRAM Used</span><span class="v"><span id="vram-used">0.0</span> GB</span></div>
+        <div class="info-row"><span class="k">VRAM Total</span><span class="v"><span id="vram-total">0.0</span> GB</span></div>
+        <div class="info-row"><span class="k">Renderer</span><span class="v" id="gpu-renderer" style="font-size:11px; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Detecting…</span></div>
+      </div>
+      <div class="sim-note">GPU metrics aren't exposed to browsers for security. Values are estimated.</div>
+    </div>
+
+    <!-- DISK CARD (wide) -->
+    <div class="card wide">
+      <div class="card-header">
+        <div class="card-title">
+          <span class="dot" style="background: var(--ok)"></span>
+          Disk
+        </div>
+        <span class="card-tag">Estimated capacity</span>
+      </div>
+      <div class="disk-info">
+        <div class="used"><span id="disk-used">0</span> GB</div>
+        <div class="total">of <span id="disk-total">0</span> GB used</div>
+      </div>
+      <div class="bar"><div class="bar-fill" id="disk-bar" style="width:0%; background: var(--grad-ok)"></div></div>
+      <div class="disk-io">
+        <div class="io-block">
+          <div class="io-label">↑ Read</div>
+          <div class="io-value"><span id="disk-read">0.0</span><span class="unit"> MB/s</span></div>
+        </div>
+        <div class="io-block">
+          <div class="io-label">↓ Write</div>
+          <div class="io-value"><span id="disk-write">0.0</span><span class="unit"> MB/s</span></div>
+        </div>
+      </div>
+      <div class="sim-note">Browser cannot read real disk I/O. Speed values are simulated estimates.</div>
+    </div>
+
+    <!-- NETWORK CARD -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">
+          <span class="dot" style="background: var(--warn)"></span>
+          Network
+        </div>
+        <span class="card-tag" id="net-type">—</span>
+      </div>
+      <canvas id="net-spark" class="spark" height="60"></canvas>
+      <div class="net-row">
+        <div class="net-block">
+          <div class="net-label"><span class="arrow-down">↓</span> Download</div>
+          <div class="net-value"><span id="net-down">0.00</span><span class="unit"> MB/s</span></div>
+        </div>
+        <div class="net-block">
+          <div class="net-label"><span class="arrow-up">↑</span> Upload</div>
+          <div class="net-value"><span id="net-up">0.00</span><span class="unit"> MB/s</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- BATTERY CARD -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">
+          <span class="dot" style="background: #f59e0b"></span>
+          Battery
+        </div>
+        <span class="card-tag" id="batt-time">—</span>
+      </div>
+      <div class="battery">
+        <div class="battery-icon">
+          <div class="battery-body">
+            <div class="battery-fill" id="batt-fill"></div>
+          </div>
+          <div class="battery-tip"></div>
+        </div>
+        <div class="battery-info">
+          <div class="pct" id="batt-pct">—</div>
+          <div class="status" id="batt-status">Checking…</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TEMP CARD -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">
+          <span class="dot" style="background: #f43f5e"></span>
+          CPU Temperature
+        </div>
+        <span class="card-tag">Estimated</span>
+      </div>
+      <div class="temp-wrap">
+        <div class="temp-value"><span id="temp-val">0</span><span class="unit">°C</span></div>
+        <div class="gauge-label" id="temp-label">Optimal</div>
+      </div>
+      <div class="temp-bar"><div class="temp-bar-fill" id="temp-bar"></div></div>
+      <div class="sim-note">CPU temp requires hardware access. Estimated from CPU load + ambient baseline.</div>
+    </div>
+
+    <!-- SYSTEM INFO CARD -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">
+          <span class="dot" style="background: var(--accent)"></span>
+          System
+        </div>
+        <span class="card-tag">Info</span>
+      </div>
+      <div class="system-info">
+        <div class="info-row"><span class="k">Platform</span><span class="v" id="sys-platform">—</span></div>
+        <div class="info-row"><span class="k">Browser</span><span class="v" id="sys-browser">—</span></div>
+        <div class="info-row"><span class="k">Cores (logical)</span><span class="v" id="sys-cores">—</span></div>
+        <div class="info-row"><span class="k">Device memory</span><span class="v" id="sys-mem">—</span></div>
+        <div class="info-row"><span class="k">Screen</span><span class="v" id="sys-screen">—</span></div>
+        <div class="info-row"><span class="k">Language</span><span class="v" id="sys-lang">—</span></div>
+        <div class="info-row"><span class="k">Uptime</span><span class="v" id="sys-uptime">—</span></div>
+      </div>
+    </div>
+
+  </section>
+
+  </div><!-- /.app -->
+  </div><!-- /.main-content -->
+</div><!-- /.layout -->
+
+<!-- ===================== FLOATING TIPS WIDGET ===================== -->
+<div class="tips">
+  <div class="tips-card">
+    <div class="tips-header">
+      <div class="tips-sparkle">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 2v6m0 8v6M4.93 4.93l4.24 4.24m5.66 5.66l4.24 4.24M2 12h6m8 0h6M4.93 19.07l4.24-4.24m5.66-5.66l4.24-4.24"/>
+        </svg>
+      </div>
+      <div class="tips-title">Smart Tip</div>
+      <div class="tips-priority info" id="tip-priority">Info</div>
+    </div>
+    <div class="tips-text" id="tip-text">Analyzing your system…</div>
+    <div class="tips-timestamp">
+      <span class="live-dot"></span>
+      <span>Updated <span id="tip-time">just now</span></span>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ================================================================
+   PULSE — SYSTEM MONITOR
+   ================================================================ */
+
+/* -------- Utilities ------------------------------------------- */
+const $  = (id) => document.getElementById(id);
+const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+const lerp  = (a, b, t) => a + (b - a) * t;
+const rand  = (lo, hi) => lo + Math.random() * (hi - lo);
+
+const level = (v) => v < 60 ? 'ok' : v < 80 ? 'warn' : 'crit';
+
+const gradFor = (lvl) =>
+  lvl === 'ok'   ? 'linear-gradient(135deg, #10d39c, #34d399)' :
+  lvl === 'warn' ? 'linear-gradient(135deg, #f5b945, #f59e0b)' :
+                   'linear-gradient(135deg, #ef5b6b, #f43f5e)';
+
+const colorFor = (lvl) =>
+  lvl === 'ok'   ? '#10d39c' :
+  lvl === 'warn' ? '#f5b945' :
+                   '#ef5b6b';
+
+/* -------- Detect environment ---------------------------------- */
+const nav = navigator;
+const cores = nav.hardwareConcurrency || 4;
+const userAgent = nav.userAgent;
+const platform = nav.platform || 'Unknown';
+
+const uaBrowser =
+  /Edg\//.test(userAgent)    ? 'Edge'   :
+  /Chrome\//.test(userAgent) ? 'Chrome' :
+  /Firefox\//.test(userAgent)? 'Firefox':
+  /Safari\//.test(userAgent) ? 'Safari' : 'Unknown';
+
+const screenInfo = `${screen.width}×${screen.height} @ ${window.devicePixelRatio || 1}x`;
+
+/* Try to detect GPU via WebGL */
+let gpuRenderer = 'Unavailable';
+try {
+  const canvas = document.createElement('canvas');
+  const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+  if (gl) {
+    const ext = gl.getExtension('WEBGL_debug_renderer_info');
+    if (ext) {
+      gpuRenderer = gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) || 'WebGL GPU';
+      if (gpuRenderer.length > 30) gpuRenderer = gpuRenderer.slice(0, 28) + '…';
+    } else {
+      gpuRenderer = 'WebGL (masked)';
+    }
+  }
+} catch (e) { /* ignore */ }
+
+/* -------- Disk capacity (Storage API, falls back to estimate) - */
+let diskTotalGB = 500; // reasonable default
+let diskUsedGB  = 230;
+async function detectDisk() {
+  if (nav.storage && nav.storage.estimate) {
+    try {
+      const est = await nav.storage.estimate();
+      if (est.quota) {
+        // quota is often huge (browser limit) — clamp to a reasonable cap
+        diskTotalGB = clamp(Math.round((est.quota / 1e9) * 0.4), 100, 2000);
+      }
+      if (est.usage) {
+        diskUsedGB = clamp(Math.round(est.usage / 1e9), 1, diskTotalGB - 1);
+      }
+    } catch (e) { /* ignore */ }
+  }
+}
+detectDisk();
+
+/* -------- System info fill ------------------------------------ */
+$('sys-platform').textContent = platform;
+$('sys-browser').textContent  = uaBrowser;
+$('sys-cores').textContent    = cores;
+$('sys-mem').textContent      = nav.deviceMemory ? `${nav.deviceMemory} GB` : 'N/A';
+$('sys-screen').textContent   = screenInfo;
+$('sys-lang').textContent     = nav.language || 'N/A';
+$('cpu-model-tag').textContent = `${cores} logical cores`;
+$('gpu-renderer').textContent = gpuRenderer;
+
+/* -------- Build core grid ------------------------------------- */
+const coresEl = $('cores');
+const coreEls = [];
+for (let i = 0; i < cores; i++) {
+  const el = document.createElement('div');
+  el.className = 'core';
+  el.innerHTML = `
+    <div class="core-fill"></div>
+    <div class="core-num">Core ${i + 1}</div>
+    <div class="core-val">0%</div>
+  `;
+  coresEl.appendChild(el);
+  coreEls.push({
+    root: el,
+    fill: el.querySelector('.core-fill'),
+    val:  el.querySelector('.core-val'),
+    usage: 0,
+  });
+}
+
+/* -------- State ----------------------------------------------- */
+const state = {
+  cpu: 0,
+  ram: 0,
+  gpu: 0,
+  ramUsedGB: 0,
+  ramTotalGB: nav.deviceMemory || 8,
+  netDown: 0,
+  netUp: 0,
+  netDownHistory: new Array(40).fill(0),
+  netUpHistory:   new Array(40).fill(0),
+  diskRead: 0,
+  diskWrite: 0,
+  diskPct: (diskUsedGB / diskTotalGB) * 100,
+  temp: 42,
+  battery: null,
+  batterySupported: false,
+  startTime: Date.now(),
+  lastTip: '',
+  lastTipTime: 0,
+};
+
+/* -------- Battery --------------------------------------------- */
+async function initBattery() {
+  if (!nav.getBattery) {
+    $('batt-pct').textContent = 'N/A';
+    $('batt-status').textContent = 'Not supported in this browser';
+    $('batt-time').textContent = 'API off';
+    return;
+  }
+  try {
+    const b = await nav.getBattery();
+    state.battery = b;
+    state.batterySupported = true;
+
+    const update = () => {
+      const pct = Math.round(b.level * 100);
+      const charging = b.charging;
+      $('batt-pct').textContent = pct + '%';
+      $('batt-status').textContent = charging
+        ? `Charging ${b.chargingTime && isFinite(b.chargingTime) ? '· ' + Math.round(b.chargingTime / 60) + 'm to full' : ''}`
+        : (b.dischargingTime && isFinite(b.dischargingTime)
+            ? 'Discharging · ' + Math.round(b.dischargingTime / 60) + 'm left'
+            : 'On battery');
+      $('batt-time').textContent = charging ? '⚡ Charging' : '🔋 Battery';
+      const fill = $('batt-fill');
+      fill.style.width = pct + '%';
+      const lvl = pct < 20 ? 'crit' : pct < 40 ? 'warn' : 'ok';
+      fill.style.background = gradFor(lvl);
+    };
+    update();
+    b.addEventListener('levelchange', update);
+    b.addEventListener('chargingchange', update);
+  } catch (e) {
+    $('batt-pct').textContent = 'N/A';
+    $('batt-status').textContent = 'Access denied';
+  }
+}
+initBattery();
+
+/* -------- Network type ---------------------------------------- */
+function detectNetType() {
+  const c = nav.connection || nav.mozConnection || nav.webkitConnection;
+  if (c && c.effectiveType) {
+    $('net-type').textContent = c.effectiveType.toUpperCase() + (c.downlink ? ` · ${c.downlink}Mbps` : '');
+  } else {
+    $('net-type').textContent = 'Online';
+  }
+}
+detectNetType();
+
+/* ================================================================
+   GAUGE RENDERING
+   ================================================================ */
+function drawGauge(canvas, value, prevValue, label) {
+  const ctx = canvas.getContext('2d');
+  const w = canvas.width;
+  const h = canvas.height;
+  const cx = w / 2, cy = h / 2;
+  const r = Math.min(w, h) / 2 - 14;
+  const start = 0.75 * Math.PI;
+  const end   = 2.25 * Math.PI;
+
+  ctx.clearRect(0, 0, w, h);
+
+  // background ring
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, start, end);
+  ctx.lineWidth = 12;
+  ctx.strokeStyle = 'rgba(255,255,255,0.05)';
+  ctx.lineCap = 'round';
+  ctx.stroke();
+
+  // value ring (animated)
+  const pct = clamp(value, 0, 100) / 100;
+  const animated = lerp(prevValue, value, 0.4) / 100;
+  const lvl = level(value);
+
+  // gradient
+  const grad = ctx.createLinearGradient(0, 0, w, h);
+  if (lvl === 'ok')   { grad.addColorStop(0, '#10d39c'); grad.addColorStop(1, '#34d399'); }
+  if (lvl === 'warn') { grad.addColorStop(0, '#f5b945'); grad.addColorStop(1, '#f59e0b'); }
+  if (lvl === 'crit') { grad.addColorStop(0, '#ef5b6b'); grad.addColorStop(1, '#f43f5e'); }
+
+  // glow under
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, start, start + (end - start) * animated);
+  ctx.lineWidth = 18;
+  ctx.strokeStyle = grad;
+  ctx.globalAlpha = 0.15;
+  ctx.lineCap = 'round';
+  ctx.stroke();
+  ctx.globalAlpha = 1;
+
+  // foreground
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, start, start + (end - start) * animated);
+  ctx.lineWidth = 12;
+  ctx.strokeStyle = grad;
+  ctx.lineCap = 'round';
+  ctx.stroke();
+
+  // tip dot
+  const tipAngle = start + (end - start) * animated;
+  const tx = cx + Math.cos(tipAngle) * r;
+  const ty = cy + Math.sin(tipAngle) * r;
+  ctx.beginPath();
+  ctx.arc(tx, ty, 5, 0, Math.PI * 2);
+  ctx.fillStyle = '#fff';
+  ctx.shadowColor = colorFor(lvl);
+  ctx.shadowBlur = 14;
+  ctx.fill();
+  ctx.shadowBlur = 0;
+}
+
+/* ================================================================
+   SPARKLINE (network)
+   ================================================================ */
+function drawSparkline(canvas, data, color) {
+  const ctx = canvas.getContext('2d');
+  const w = canvas.width = canvas.clientWidth;
+  const h = canvas.height = canvas.clientHeight;
+  ctx.clearRect(0, 0, w, h);
+
+  const max = Math.max(1, ...data);
+  const step = w / (data.length - 1);
+
+  // gradient fill
+  const grad = ctx.createLinearGradient(0, 0, 0, h);
+  grad.addColorStop(0, color + '40');
+  grad.addColorStop(1, color + '00');
+
+  // fill
+  ctx.beginPath();
+  ctx.moveTo(0, h);
+  data.forEach((v, i) => {
+    const x = i * step;
+    const y = h - (v / max) * (h - 6) - 3;
+    ctx.lineTo(x, y);
+  });
+  ctx.lineTo(w, h);
+  ctx.closePath();
+  ctx.fillStyle = grad;
+  ctx.fill();
+
+  // line
+  ctx.beginPath();
+  data.forEach((v, i) => {
+    const x = i * step;
+    const y = h - (v / max) * (h - 6) - 3;
+    if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+  });
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 2;
+  ctx.lineJoin = 'round';
+  ctx.stroke();
+
+  // last point
+  const lastY = h - (data[data.length - 1] / max) * (h - 6) - 3;
+  const lastX = (data.length - 1) * step;
+  ctx.beginPath();
+  ctx.arc(lastX, lastY, 3, 0, Math.PI * 2);
+  ctx.fillStyle = color;
+  ctx.shadowColor = color;
+  ctx.shadowBlur = 8;
+  ctx.fill();
+  ctx.shadowBlur = 0;
+}
+
+/* ================================================================
+   SIMULATION ENGINE
+   --------------------------------------------------------------
+   Browsers cannot access real CPU, RAM, disk, GPU, or network
+   throughput. We generate realistic, correlated estimates driven
+   by user activity patterns.
+   ================================================================ */
+let simTime = 0;
+let simPhase = 'idle'; // idle | active | peak
+let simPhaseTimer = 0;
+
+function tickSimulation() {
+  simTime += 1;
+
+  // Occasionally transition phases
+  simPhaseTimer -= 1;
+  if (simPhaseTimer <= 0) {
+    const roll = Math.random();
+    if (roll < 0.5) simPhase = 'idle';
+    else if (roll < 0.85) simPhase = 'active';
+    else simPhase = 'peak';
+    simPhaseTimer = Math.floor(rand(8, 25));
+  }
+
+  // Base targets per phase
+  const target = {
+    idle:  { cpu: rand(8, 22),  ram: rand(30, 50), gpu: rand(5, 15) },
+    active:{ cpu: rand(35, 65), ram: rand(50, 70), gpu: rand(25, 55) },
+    peak:  { cpu: rand(75, 95), ram: rand(70, 92), gpu: rand(60, 90) },
+  }[simPhase];
+
+  // Smooth toward target
+  state.cpu = clamp(lerp(state.cpu, target.cpu + rand(-8, 8), 0.45), 0, 100);
+  state.ram = clamp(lerp(state.ram, target.ram + rand(-3, 3), 0.25), 5, 99);
+  state.gpu = clamp(lerp(state.gpu, target.gpu + rand(-10, 10), 0.4), 0, 100);
+
+  // RAM used from %
+  state.ramUsedGB = (state.ram / 100) * state.ramTotalGB;
+
+  // Per-core usage
+  for (let i = 0; i < coreEls.length; i++) {
+    const target = clamp(state.cpu + rand(-25, 25), 0, 100);
+    coreEls[i].usage = clamp(lerp(coreEls[i].usage, target, 0.5), 0, 100);
+  }
+
+  // Network — bursts
+  const baseDown = simPhase === 'idle' ? rand(0.02, 0.3)
+                 : simPhase === 'active' ? rand(0.5, 4)
+                 : rand(2, 12);
+  const baseUp = simPhase === 'idle' ? rand(0, 0.05)
+               : simPhase === 'active' ? rand(0.1, 0.8)
+               : rand(0.3, 2.5);
+
+  state.netDown = clamp(lerp(state.netDown, baseDown, 0.5), 0, 100);
+  state.netUp   = clamp(lerp(state.netUp,   baseUp,   0.5), 0, 100);
+
+  state.netDownHistory.shift();
+  state.netDownHistory.push(state.netDown);
+  state.netUpHistory.shift();
+  state.netUpHistory.push(state.netUp);
+
+  // Disk I/O
+  state.diskRead  = clamp(lerp(state.diskRead,  simPhase === 'peak' ? rand(20, 120) : rand(0.5, 25), 0.4), 0, 500);
+  state.diskWrite = clamp(lerp(state.diskWrite, simPhase === 'peak' ? rand(15, 80)  : rand(0.2, 12), 0.4), 0, 500);
+
+  // Disk % slowly creeps up/down
+  state.diskPct = clamp(state.diskPct + rand(-0.05, 0.08), 30, 92);
+
+  // CPU temp — derived from CPU load
+  const targetTemp = 38 + state.cpu * 0.55 + (simPhase === 'peak' ? 8 : 0);
+  state.temp = clamp(lerp(state.temp, targetTemp + rand(-2, 2), 0.3), 35, 95);
+}
+
+/* ================================================================
+   RENDER LOOP
+   ================================================================ */
+let prevCpu = 0, prevRam = 0, prevGpu = 0;
+
+function render() {
+  /* Summary */
+  $('sum-cpu').textContent = Math.round(state.cpu);
+  $('sum-ram').textContent = Math.round(state.ram);
+  $('sum-disk').textContent = Math.round(state.diskPct);
+  $('sum-net').textContent = (state.netDown + state.netUp).toFixed(2);
+
+  /* CPU */
+  $('cpu-val').textContent = Math.round(state.cpu);
+  drawGauge($('cpu-gauge'), state.cpu, prevCpu);
+  prevCpu = state.cpu;
+
+  for (let i = 0; i < coreEls.length; i++) {
+    const v = Math.round(coreEls[i].usage);
+    const c = coreEls[i];
+    c.val.textContent = v + '%';
+    c.fill.style.height = v + '%';
+    const bg = gradFor(level(v));
+    c.fill.style.background = bg;
+  }
+
+  /* RAM */
+  $('ram-pct').textContent = Math.round(state.ram);
+  $('ram-used').textContent = state.ramUsedGB.toFixed(1);
+  $('ram-total').textContent = state.ramTotalGB.toFixed(1);
+  $('ram-bar').style.width = state.ram + '%';
+  drawGauge($('ram-gauge'), state.ram, prevRam);
+  prevRam = state.ram;
+
+  /* GPU */
+  $('gpu-val').textContent = Math.round(state.gpu);
+  $('vram-used').textContent = ((state.gpu / 100) * 4).toFixed(1);
+  $('vram-total').textContent = '4.0';
+  drawGauge($('gpu-gauge'), state.gpu, prevGpu);
+  prevGpu = state.gpu;
+
+  /* Disk */
+  $('disk-used').textContent = Math.round((state.diskPct / 100) * diskTotalGB);
+  $('disk-total').textContent = diskTotalGB;
+  $('disk-bar').style.width = state.diskPct + '%';
+  $('disk-read').textContent = state.diskRead.toFixed(1);
+  $('disk-write').textContent = state.diskWrite.toFixed(1);
+
+  /* Network */
+  $('net-down').textContent = state.netDown.toFixed(2);
+  $('net-up').textContent = state.netUp.toFixed(2);
+  drawSparkline($('net-spark'), state.netDownHistory, '#00d4ff');
+
+  /* Temperature */
+  $('temp-val').textContent = Math.round(state.temp);
+  const tLvl = state.temp < 60 ? 'ok' : state.temp < 80 ? 'warn' : 'crit';
+  $('temp-label').textContent =
+    tLvl === 'ok'   ? 'Optimal' :
+    tLvl === 'warn' ? 'Warm'    : 'Hot';
+  $('temp-bar').style.width = clamp((state.temp - 30) * 2, 0, 100) + '%';
+  $('temp-bar').style.background = gradFor(tLvl);
+
+  /* Uptime */
+  const up = Math.floor((Date.now() - state.startTime) / 1000);
+  const h = Math.floor(up / 3600);
+  const m = Math.floor((up % 3600) / 60);
+  const s = up % 60;
+  const upStr = h > 0 ? `${h}h ${m}m` : `${m}m ${s}s`;
+  $('uptime').textContent = upStr;
+  $('sys-uptime').textContent = upStr;
+}
+
+/* ================================================================
+   SMART TIPS — rule engine
+   ================================================================ */
+const tipRules = [
+  {
+    priority: 'crit',
+    when: (s) => s.batterySupported && s.battery && !s.battery.charging && s.battery.level < 0.2 && s.cpu > 70,
+    text: () => 'Low battery under heavy load — plug in now to avoid throttling and data loss.'
+  },
+  {
+    priority: 'crit',
+    when: (s) => s.ram > 90,
+    text: () => `RAM is critically full (${Math.round(s.ram)}%) — close unused apps or tabs to prevent freezes.`
+  },
+  {
+    priority: 'crit',
+    when: (s) => s.temp > 85,
+    text: () => `CPU temperature is high (${Math.round(s.temp)}°C) — check ventilation and reduce load.`
+  },
+  {
+    priority: 'warn',
+    when: (s) => s.cpu > 80,
+    text: () => `High CPU load detected (${Math.round(s.cpu)}%) — plug in your charger for better performance.`
+  },
+  {
+    priority: 'warn',
+    when: (s) => s.ram > 85,
+    text: () => 'RAM is almost full — consider closing unused tabs or apps to free up memory.'
+  },
+  {
+    priority: 'warn',
+    when: (s) => s.batterySupported && s.battery && !s.battery.charging && s.battery.level < 0.2,
+    text: () => `Battery at ${Math.round(s.battery.level * 100)}% — plug in soon.`
+  },
+  {
+    priority: 'warn',
+    when: (s) => s.netDown + s.netUp > 8,
+    text: () => 'High network usage detected — check for background downloads or cloud sync.'
+  },
+  {
+    priority: 'warn',
+    when: (s) => s.diskPct > 85,
+    text: () => `Disk is ${Math.round(s.diskPct)}% full — clear old files to keep the system responsive.`
+  },
+  {
+    priority: 'info',
+    when: (s) => s.gpu > 70,
+    text: () => 'GPU under heavy load — graphics-intensive task detected. Lower settings if you experience lag.'
+  },
+  {
+    priority: 'info',
+    when: (s) => s.diskRead + s.diskWrite > 100,
+    text: () => 'Heavy disk activity — this can slow other apps. Consider pausing large file operations.'
+  },
+  {
+    priority: 'ok',
+    when: (s) => s.cpu < 25 && s.ram < 60 && s.temp < 55,
+    text: () => 'System is running cool — good time to run updates, backups, or other heavy tasks.'
+  },
+  {
+    priority: 'ok',
+    when: (s) => s.batterySupported && s.battery && s.battery.charging && s.battery.level > 0.8,
+    text: () => 'Battery nearly full and charging — you can unplug soon for better battery longevity.'
+  },
+  {
+    priority: 'info',
+    when: (s) => s.cpu > 50 && s.ram > 70,
+    text: () => 'System is working hard on both CPU and memory — multitasking may feel slower than usual.'
+  },
+  {
+    priority: 'info',
+    when: (s) => true, // fallback
+    text: (s) => `All systems nominal — CPU ${Math.round(s.cpu)}%, RAM ${Math.round(s.ram)}%, ${Math.round(s.temp)}°C.`
+  },
+];
+
+let lastTipIndex = -1;
+function updateTip() {
+  // Find the first matching rule (highest priority first)
+  const order = ['crit', 'warn', 'info', 'ok'];
+  for (const prio of order) {
+    const candidates = tipRules
+      .map((r, i) => ({ r, i }))
+      .filter(x => x.r.priority === prio && x.r.when(state));
+    if (candidates.length) {
+      // pick one (round-robin within priority to avoid sticky tips)
+      const pick = candidates[Math.floor(Math.random() * candidates.length)];
+
+      // Don't show the same tip twice in a row
+      if (pick.i === lastTipIndex && candidates.length > 1) {
+        const alt = candidates.find(c => c.i !== lastTipIndex);
+        if (alt) pick.i = alt.i;
+      }
+
+      const text = pick.r.text(state);
+      if (text === state.lastTip) return; // skip if identical
+
+      lastTipIndex = pick.i;
+      state.lastTip = text;
+      state.lastTipTime = Date.now();
+
+      const tipEl = $('tip-text');
+      tipEl.classList.add('fade');
+      setTimeout(() => {
+        tipEl.textContent = text;
+        tipEl.classList.remove('fade');
+      }, 250);
+
+      const pri = $('tip-priority');
+      pri.className = 'tips-priority ' + pick.r.priority;
+      pri.textContent =
+        pick.r.priority === 'crit' ? 'Critical' :
+        pick.r.priority === 'warn' ? 'Warning'  :
+        pick.r.priority === 'ok'   ? 'Good'     : 'Info';
+      return;
+    }
+  }
+}
+
+/* ================================================================
+   MAIN LOOP — every 2 seconds
+   ================================================================ */
+let tickCount = 0;
+
+function loop() {
+  tickSimulation();
+  render();
+  // Tips update every cycle (so they react quickly to changes)
+  if (tickCount % 2 === 0) updateTip();
+  // Refresh "Updated Xs ago" text
+  const secAgo = Math.round((Date.now() - state.lastTipTime) / 1000);
+  $('tip-time').textContent = secAgo < 1 ? 'just now' :
+    secAgo < 60 ? `${secAgo}s ago` :
+    `${Math.floor(secAgo / 60)}m ago`;
+  tickCount++;
+}
+
+render();              // initial paint
+updateTip();           // initial tip
+const handle = setInterval(loop, 2000);
+
+// Re-draw on resize for crisp canvases
+window.addEventListener('resize', () => {
+  drawSparkline($('net-spark'), state.netDownHistory, '#00d4ff');
+});
+
+</script>
+</body>
+</html>

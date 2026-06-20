@@ -1,0 +1,1016 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Pulse — The system monitor that thinks</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-0: #07090f;
+    --bg-1: #0d111c;
+    --bg-2: #131826;
+    --bg-3: #1a2138;
+    --line: rgba(255, 255, 255, 0.06);
+    --line-strong: rgba(255, 255, 255, 0.12);
+    --text-0: #f5f7fb;
+    --text-1: #c2c8d6;
+    --text-2: #7a8295;
+    --text-3: #4a5168;
+    --accent: #5b8def;
+    --accent-2: #00d4ff;
+    --ok: #10d39c;
+    --warn: #f5b945;
+    --crit: #ef5b6b;
+    --grad-cool: linear-gradient(135deg, #5b8def 0%, #00d4ff 100%);
+    --grad-ok: linear-gradient(135deg, #10d39c 0%, #34d399 100%);
+    --grad-warn: linear-gradient(135deg, #f5b945 0%, #f59e0b 100%);
+    --grad-crit: linear-gradient(135deg, #ef5b6b 0%, #f43f5e 100%);
+    --grad-violet: linear-gradient(135deg, #8b5cf6 0%, #d946ef 100%);
+    --grad-pro: linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%);
+    --r-sm: 10px;
+    --r-md: 14px;
+    --r-lg: 20px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    background: var(--bg-0);
+    color: var(--text-0);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-size: 15px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+  body::before {
+    content: ''; position: fixed; inset: 0;
+    background:
+      radial-gradient(ellipse at top, rgba(91, 141, 239, 0.12), transparent 50%),
+      radial-gradient(ellipse at bottom, rgba(139, 92, 246, 0.08), transparent 50%);
+    pointer-events: none; z-index: 0;
+  }
+  body::after {
+    content: ''; position: fixed; inset: 0;
+    background-image:
+      linear-gradient(rgba(255, 255, 255, 0.015) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255, 255, 255, 0.015) 1px, transparent 1px);
+    background-size: 50px 50px;
+    pointer-events: none; z-index: 0;
+  }
+
+  .page {
+    position: relative; z-index: 1;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 28px;
+  }
+
+  /* ============================================================
+     NAV
+     ============================================================ */
+  .nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 24px 0;
+  }
+  .nav-brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    text-decoration: none;
+    color: var(--text-0);
+  }
+  .nav-brand .logo {
+    width: 36px; height: 36px;
+    border-radius: 10px;
+    background: var(--grad-cool);
+    display: grid; place-items: center;
+    box-shadow: 0 0 20px rgba(91, 141, 239, 0.4);
+  }
+  .nav-brand .logo svg { width: 18px; height: 18px; color: white; }
+  .nav-brand h2 { font-size: 18px; font-weight: 800; letter-spacing: -0.02em; }
+
+  .nav-links {
+    display: flex; align-items: center; gap: 6px;
+  }
+  .nav-links a {
+    color: var(--text-1);
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 500;
+    padding: 8px 12px;
+    border-radius: 8px;
+    transition: all 0.15s ease;
+  }
+  .nav-links a:hover { color: var(--text-0); background: rgba(255, 255, 255, 0.04); }
+
+  .nav-cta {
+    background: var(--grad-cool);
+    color: white !important;
+    padding: 9px 16px !important;
+    font-weight: 600 !important;
+  }
+
+  /* ============================================================
+     HERO
+     ============================================================ */
+  .hero {
+    text-align: center;
+    padding: 80px 0 60px;
+    position: relative;
+  }
+  .hero-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(91, 141, 239, 0.1);
+    border: 1px solid rgba(91, 141, 239, 0.25);
+    color: var(--accent);
+    padding: 6px 14px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 600;
+    margin-bottom: 28px;
+  }
+  .hero-pill .dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--ok);
+    box-shadow: 0 0 8px var(--ok);
+  }
+  .hero h1 {
+    font-size: clamp(40px, 6vw, 76px);
+    font-weight: 900;
+    letter-spacing: -0.04em;
+    line-height: 1.05;
+    margin-bottom: 24px;
+  }
+  .hero h1 .grad {
+    background: var(--grad-cool);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .hero h1 .grad-violet {
+    background: var(--grad-pro);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .hero-sub {
+    font-size: 19px;
+    color: var(--text-1);
+    max-width: 680px;
+    margin: 0 auto 40px;
+    line-height: 1.55;
+  }
+  .hero-actions {
+    display: flex; justify-content: center;
+    gap: 14px; flex-wrap: wrap;
+  }
+  .btn {
+    padding: 13px 24px;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 600;
+    border: 1px solid var(--line);
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--text-1);
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.15s ease;
+    font-family: inherit;
+  }
+  .btn:hover { border-color: var(--line-strong); color: var(--text-0); transform: translateY(-1px); }
+  .btn svg { width: 16px; height: 16px; }
+  .btn-primary { background: var(--grad-cool); color: white; border-color: transparent; box-shadow: 0 10px 30px -10px rgba(91, 141, 239, 0.5); }
+  .btn-primary:hover { box-shadow: 0 14px 40px -10px rgba(91, 141, 239, 0.6); }
+  .btn-pro { background: var(--grad-pro); color: white; border-color: transparent; box-shadow: 0 10px 30px -10px rgba(139, 92, 246, 0.5); }
+
+  .hero-trust {
+    margin-top: 32px;
+    font-size: 12px;
+    color: var(--text-3);
+    letter-spacing: 0.04em;
+  }
+
+  /* Hero preview card */
+  .hero-preview {
+    margin-top: 70px;
+    background: linear-gradient(180deg, rgba(26, 33, 56, 0.7), rgba(13, 17, 28, 0.7));
+    border: 1px solid var(--line-strong);
+    border-radius: 24px;
+    padding: 24px;
+    box-shadow: 0 30px 80px -20px rgba(0, 0, 0, 0.7), 0 0 60px rgba(91, 141, 239, 0.1);
+    position: relative;
+    overflow: hidden;
+  }
+  .hero-preview::before {
+    content: '';
+    position: absolute;
+    inset: -1px;
+    border-radius: 24px;
+    padding: 1px;
+    background: linear-gradient(135deg, rgba(91, 141, 239, 0.3), transparent 30%, rgba(139, 92, 246, 0.3));
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+  }
+  .preview-bar {
+    display: flex; align-items: center; gap: 6px;
+    margin-bottom: 18px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid var(--line);
+  }
+  .preview-dot {
+    width: 11px; height: 11px;
+    border-radius: 50%;
+    background: var(--bg-3);
+  }
+  .preview-dot.red { background: #ff5f57; }
+  .preview-dot.amber { background: #febc2e; }
+  .preview-dot.green { background: #28c840; }
+  .preview-url {
+    margin-left: 14px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--text-3);
+  }
+
+  .preview-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 14px;
+  }
+  .pstat {
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 16px;
+    text-align: center;
+  }
+  .pstat .pstat-label {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text-2);
+    margin-bottom: 6px;
+  }
+  .pstat .pstat-val {
+    font-size: 32px;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    font-variant-numeric: tabular-nums;
+  }
+  .pstat .pstat-val .unit { font-size: 14px; color: var(--text-2); font-weight: 500; }
+  .pstat .pstat-trend {
+    font-size: 10px; margin-top: 4px;
+    font-weight: 600;
+  }
+  .trend-up { color: var(--ok); }
+  .trend-down { color: var(--crit); }
+  .trend-neutral { color: var(--text-2); }
+
+  /* ============================================================
+     SOCIAL PROOF
+     ============================================================ */
+  .social-proof {
+    padding: 40px 0 60px;
+    text-align: center;
+  }
+  .social-proof .label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text-3);
+    margin-bottom: 18px;
+  }
+  .logo-row {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 48px;
+    flex-wrap: wrap;
+    opacity: 0.5;
+  }
+  .logo-row .co {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text-2);
+    letter-spacing: -0.01em;
+  }
+
+  /* ============================================================
+     FEATURES
+     ============================================================ */
+  section.features { padding: 80px 0; }
+  .section-head {
+    text-align: center;
+    max-width: 680px;
+    margin: 0 auto 56px;
+  }
+  .section-tag {
+    display: inline-block;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--accent);
+    margin-bottom: 12px;
+    font-weight: 700;
+  }
+  .section-head h2 {
+    font-size: clamp(32px, 4vw, 48px);
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    line-height: 1.1;
+    margin-bottom: 16px;
+  }
+  .section-head p {
+    font-size: 17px;
+    color: var(--text-2);
+    line-height: 1.6;
+  }
+
+  .feat-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+  }
+  .feat {
+    background: linear-gradient(180deg, rgba(26, 33, 56, 0.4), rgba(13, 17, 28, 0.4));
+    border: 1px solid var(--line);
+    border-radius: var(--r-lg);
+    padding: 28px;
+    transition: all 0.2s ease;
+  }
+  .feat:hover {
+    border-color: var(--line-strong);
+    transform: translateY(-2px);
+  }
+  .feat-icon {
+    width: 48px; height: 48px;
+    border-radius: 12px;
+    display: grid; place-items: center;
+    margin-bottom: 18px;
+  }
+  .feat-icon svg { width: 22px; height: 22px; color: white; }
+  .feat-icon.blue { background: var(--grad-cool); }
+  .feat-icon.violet { background: var(--grad-violet); }
+  .feat-icon.green { background: var(--grad-ok); }
+  .feat-icon.amber { background: var(--grad-warn); }
+  .feat-icon.rose { background: var(--grad-crit); }
+  .feat h3 {
+    font-size: 17px;
+    font-weight: 700;
+    margin-bottom: 8px;
+    letter-spacing: -0.01em;
+  }
+  .feat p {
+    font-size: 13px;
+    color: var(--text-2);
+    line-height: 1.6;
+  }
+
+  /* ============================================================
+     HOW IT WORKS
+     ============================================================ */
+  section.how { padding: 80px 0; }
+  .steps {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 32px;
+    position: relative;
+  }
+  .step {
+    text-align: center;
+    position: relative;
+  }
+  .step-num {
+    width: 48px; height: 48px;
+    border-radius: 50%;
+    background: var(--grad-cool);
+    color: white;
+    font-size: 20px;
+    font-weight: 800;
+    display: grid; place-items: center;
+    margin: 0 auto 18px;
+    box-shadow: 0 0 30px rgba(91, 141, 239, 0.4);
+  }
+  .step h4 { font-size: 16px; font-weight: 700; margin-bottom: 8px; }
+  .step p { font-size: 13px; color: var(--text-2); }
+
+  /* ============================================================
+     PRICING
+     ============================================================ */
+  section.pricing { padding: 80px 0; }
+  .price-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 18px;
+  }
+  .price {
+    background: linear-gradient(180deg, rgba(26, 33, 56, 0.5), rgba(13, 17, 28, 0.5));
+    border: 1px solid var(--line);
+    border-radius: var(--r-lg);
+    padding: 32px;
+    position: relative;
+    transition: all 0.2s ease;
+  }
+  .price:hover { border-color: var(--line-strong); }
+  .price.featured {
+    border-color: rgba(139, 92, 246, 0.4);
+    background: linear-gradient(180deg, rgba(139, 92, 246, 0.06), rgba(13, 17, 28, 0.5));
+    transform: scale(1.02);
+  }
+  .price-badge {
+    position: absolute;
+    top: -10px; right: 24px;
+    background: var(--grad-pro);
+    color: white;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    padding: 4px 10px;
+    border-radius: 999px;
+  }
+  .price-name {
+    font-size: 13px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-2);
+    margin-bottom: 8px;
+  }
+  .price.featured .price-name { color: var(--pro); }
+  .price-amount {
+    display: flex;
+    align-items: baseline;
+    gap: 4px;
+    margin-bottom: 4px;
+  }
+  .price-amount .amount {
+    font-size: 44px;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    line-height: 1;
+  }
+  .price-amount .per {
+    font-size: 14px;
+    color: var(--text-2);
+  }
+  .price-desc {
+    font-size: 13px;
+    color: var(--text-2);
+    margin-bottom: 24px;
+    min-height: 40px;
+  }
+  .price-features {
+    list-style: none;
+    margin-bottom: 24px;
+  }
+  .price-features li {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 8px 0;
+    font-size: 13px;
+    color: var(--text-1);
+    border-top: 1px solid var(--line);
+  }
+  .price-features li:first-child { border-top: none; }
+  .price-features svg {
+    width: 14px; height: 14px;
+    color: var(--ok);
+    flex-shrink: 0;
+    margin-top: 3px;
+  }
+  .price-features li.muted { color: var(--text-3); }
+  .price-features li.muted svg { color: var(--text-3); }
+  .price-btn {
+    display: block;
+    width: 100%;
+    text-align: center;
+    padding: 11px;
+    border-radius: 9px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    text-decoration: none;
+    border: 1px solid var(--line);
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--text-1);
+    transition: all 0.15s ease;
+  }
+  .price-btn:hover { border-color: var(--line-strong); color: var(--text-0); }
+  .price-btn.primary {
+    background: var(--grad-cool);
+    color: white;
+    border-color: transparent;
+  }
+  .price.featured .price-btn.primary {
+    background: var(--grad-pro);
+  }
+
+  /* ============================================================
+     FAQ
+     ============================================================ */
+  section.faq { padding: 80px 0; }
+  .faq-list {
+    max-width: 720px;
+    margin: 0 auto;
+  }
+  .faq-item {
+    background: linear-gradient(180deg, rgba(26, 33, 56, 0.3), rgba(13, 17, 28, 0.3));
+    border: 1px solid var(--line);
+    border-radius: var(--r-md);
+    margin-bottom: 10px;
+    overflow: hidden;
+  }
+  .faq-q {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 18px 22px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-0);
+    transition: all 0.15s ease;
+  }
+  .faq-q:hover { background: rgba(255, 255, 255, 0.02); }
+  .faq-q .plus {
+    width: 20px; height: 20px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.06);
+    display: grid; place-items: center;
+    transition: all 0.2s ease;
+    font-size: 14px;
+    color: var(--text-1);
+    flex-shrink: 0;
+  }
+  .faq-item.open .faq-q .plus {
+    background: var(--grad-cool);
+    color: white;
+    transform: rotate(45deg);
+  }
+  .faq-a {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease;
+  }
+  .faq-item.open .faq-a { max-height: 300px; }
+  .faq-a-inner {
+    padding: 0 22px 20px;
+    font-size: 13px;
+    color: var(--text-2);
+    line-height: 1.7;
+  }
+
+  /* ============================================================
+     CTA
+     ============================================================ */
+  .cta-section {
+    padding: 80px 0 120px;
+    text-align: center;
+  }
+  .cta-card {
+    background: linear-gradient(135deg, rgba(91, 141, 239, 0.1), rgba(139, 92, 246, 0.08));
+    border: 1px solid rgba(91, 141, 239, 0.2);
+    border-radius: 24px;
+    padding: 60px 40px;
+    position: relative;
+    overflow: hidden;
+  }
+  .cta-card::before {
+    content: '';
+    position: absolute;
+    inset: -1px;
+    border-radius: 24px;
+    padding: 1px;
+    background: linear-gradient(135deg, rgba(91, 141, 239, 0.4), transparent 50%, rgba(139, 92, 246, 0.4));
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+  }
+  .cta-card h2 {
+    font-size: clamp(28px, 4vw, 42px);
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    margin-bottom: 14px;
+  }
+  .cta-card p {
+    font-size: 17px;
+    color: var(--text-1);
+    max-width: 560px;
+    margin: 0 auto 28px;
+  }
+
+  /* ============================================================
+     FOOTER
+     ============================================================ */
+  footer {
+    padding: 40px 0 60px;
+    border-top: 1px solid var(--line);
+    text-align: center;
+    color: var(--text-3);
+    font-size: 12px;
+  }
+  .footer-links {
+    display: flex;
+    justify-content: center;
+    gap: 24px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+  }
+  .footer-links a {
+    color: var(--text-2);
+    text-decoration: none;
+    font-size: 13px;
+  }
+  .footer-links a:hover { color: var(--text-0); }
+
+  /* ============================================================
+     RESPONSIVE
+     ============================================================ */
+  @media (max-width: 900px) {
+    .feat-grid, .steps, .price-grid { grid-template-columns: 1fr; }
+    .preview-grid { grid-template-columns: repeat(2, 1fr); }
+    .price.featured { transform: none; }
+    .nav-links a:not(.nav-cta) { display: none; }
+  }
+  @media (max-width: 600px) {
+    .page { padding: 0 16px; }
+    .hero { padding: 50px 0 40px; }
+    .preview-grid { grid-template-columns: 1fr 1fr; }
+    .pstat .pstat-val { font-size: 24px; }
+    .hero-actions { flex-direction: column; align-items: stretch; }
+    .hero-actions .btn { justify-content: center; }
+  }
+</style>
+</head>
+<body>
+
+<div class="page">
+
+  <!-- ===================== NAV ===================== -->
+  <nav class="nav">
+    <a href="landing.html" class="nav-brand">
+      <div class="logo">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+        </svg>
+      </div>
+      <h2>Pulse</h2>
+    </a>
+    <div class="nav-links">
+      <a href="index.html">Dashboard</a>
+      <a href="pro.html">Pro</a>
+      <a href="mobile.html">Mobile</a>
+      <a href="team.html">Team</a>
+      <a href="#pricing">Pricing</a>
+      <a href="index.html" class="nav-cta">Try it free</a>
+    </div>
+  </nav>
+
+  <!-- ===================== HERO ===================== -->
+  <section class="hero">
+    <div class="hero-pill">
+      <span class="dot"></span>
+      <span>Now with AI insights · Public beta</span>
+    </div>
+    <h1>The system monitor<br>that <span class="grad">thinks.</span></h1>
+    <p class="hero-sub">
+      Pulse doesn't just show your PC stats — it understands them. Real-time monitoring, plain-English AI diagnosis, and predictive alerts. Across desktop, mobile, and team.
+    </p>
+    <div class="hero-actions">
+      <a href="index.html" class="btn btn-primary">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+        </svg>
+        Try the live demo
+      </a>
+      <a href="pro.html" class="btn">
+        See Pro features
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
+        </svg>
+      </a>
+    </div>
+    <div class="hero-trust">No credit card · Free tier forever · Works on Windows, macOS, Linux</div>
+
+    <!-- Hero preview -->
+    <div class="hero-preview">
+      <div class="preview-bar">
+        <span class="preview-dot red"></span>
+        <span class="preview-dot amber"></span>
+        <span class="preview-dot green"></span>
+        <span class="preview-url">pulse.app/dashboard</span>
+      </div>
+      <div class="preview-grid">
+        <div class="pstat">
+          <div class="pstat-label">CPU</div>
+          <div class="pstat-val">42<span class="unit">%</span></div>
+          <div class="pstat-trend trend-down">↓ 8% vs avg</div>
+        </div>
+        <div class="pstat">
+          <div class="pstat-label">RAM</div>
+          <div class="pstat-val">58<span class="unit">%</span></div>
+          <div class="pstat-trend trend-neutral">— stable</div>
+        </div>
+        <div class="pstat">
+          <div class="pstat-label">Temp</div>
+          <div class="pstat-val">54<span class="unit">°C</span></div>
+          <div class="pstat-trend trend-up">↑ 3°C vs avg</div>
+        </div>
+        <div class="pstat">
+          <div class="pstat-label">Disk</div>
+          <div class="pstat-val">62<span class="unit">%</span></div>
+          <div class="pstat-trend trend-down">↓ 4% freed</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== SOCIAL PROOF ===================== -->
+  <section class="social-proof">
+    <div class="label">Trusted by power users at</div>
+    <div class="logo-row">
+      <span class="co">NVIDIA</span>
+      <span class="co">EPIC GAMES</span>
+      <span class="co">RAZER</span>
+      <span class="co">OBSIDIAN</span>
+      <span class="co">FIGMA</span>
+      <span class="co">STRIPE</span>
+    </div>
+  </section>
+
+  <!-- ===================== FEATURES ===================== -->
+  <section class="features">
+    <div class="section-head">
+      <div class="section-tag">Features</div>
+      <h2>More than a number. A diagnosis.</h2>
+      <p>HWiNFO shows you temperatures. Task Manager shows you processes. Pulse tells you what's actually happening — and what to do about it.</p>
+    </div>
+
+    <div class="feat-grid">
+      <div class="feat">
+        <div class="feat-icon violet">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 2v6m0 8v6M4.93 4.93l4.24 4.24m5.66 5.66l4.24 4.24M2 12h6m8 0h6M4.93 19.07l4.24-4.24m5.66-5.66l4.24-4.24"/>
+          </svg>
+        </div>
+        <h3>AI-powered diagnosis</h3>
+        <p>Plain-English explanations of what's happening on your PC. "Your CPU is 35% above your normal baseline — likely a runaway Chrome tab." Powered by Llama 3.1 8B.</p>
+      </div>
+
+      <div class="feat">
+        <div class="feat-icon blue">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 3v18h18"/><path d="M7 12l4-4 4 4 6-6"/>
+          </svg>
+        </div>
+        <h3>30-day history &amp; replay</h3>
+        <p>Every metric, every second. Drag the timeline scrubber to replay any moment in the last month. Compare weeks side-by-side. Find patterns you'd otherwise miss.</p>
+      </div>
+
+      <div class="feat">
+        <div class="feat-icon green">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+          </svg>
+        </div>
+        <h3>Smart alerts</h3>
+        <p>Set thresholds. Get anomalies. We learn your baseline and only alert when something actually changes. Push, email, Discord, Telegram, webhook.</p>
+      </div>
+
+      <div class="feat">
+        <div class="feat-icon amber">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 2L9 9H2l5.5 4L5 21l7-4 7 4-2.5-8L22 9h-7z"/>
+          </svg>
+        </div>
+        <h3>Learned baselines</h3>
+        <p>Pulse watches your PC for 14 days, then learns what's normal for you. Anomalies fire only when you genuinely deviate — not when some random threshold trips.</p>
+      </div>
+
+      <div class="feat">
+        <div class="feat-icon rose">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12.01" y2="18"/>
+          </svg>
+        </div>
+        <h3>Mobile companion</h3>
+        <p>Your PC's pulse in your pocket. Push alerts on your lock screen. Lock your workstation. Diagnose remotely. iOS and Android, with offline cache.</p>
+      </div>
+
+      <div class="feat">
+        <div class="feat-icon blue">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>
+          </svg>
+        </div>
+        <h3>Grafana &amp; exports</h3>
+        <p>Stream live data to your own Grafana dashboard. Export to CSV, JSON, or Parquet. We're the data layer — your dashboards stay yours.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== HOW IT WORKS ===================== -->
+  <section class="how">
+    <div class="section-head">
+      <div class="section-tag">How it works</div>
+      <h2>Three steps. Two minutes.</h2>
+    </div>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <h4>Install the agent</h4>
+        <p>Lightweight background service for Windows, macOS, and Linux. Uses &lt;0.5% CPU. Reads sensors via LibreHardwareMonitor.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <h4>Open your dashboard</h4>
+        <p>pulse.app works in any browser. Live metrics, AI insights, alerts. Mobile apps for iOS and Android.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <h4>Stop guessing</h4>
+        <p>After 14 days, Pulse knows your PC better than you do. Anomalies fire only when they matter.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== PRICING ===================== -->
+  <section class="pricing" id="pricing">
+    <div class="section-head">
+      <div class="section-tag">Pricing</div>
+      <h2>Simple plans. No surprises.</h2>
+      <p>Start free. Upgrade when you're ready. Cancel anytime.</p>
+    </div>
+
+    <div class="price-grid">
+      <div class="price">
+        <div class="price-name">Free</div>
+        <div class="price-amount">
+          <span class="amount">$0</span>
+          <span class="per">/forever</span>
+        </div>
+        <div class="price-desc">For curious users and casual PC owners.</div>
+        <ul class="price-features">
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg> 1 PC</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg> Real-time monitoring</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg> Smart tips</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg> 24-hour history</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg> Web dashboard</li>
+          <li class="muted"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> AI insights</li>
+          <li class="muted"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> Mobile app</li>
+        </ul>
+        <a href="index.html" class="price-btn">Start free</a>
+      </div>
+
+      <div class="price featured">
+        <div class="price-badge">Most popular</div>
+        <div class="price-name">Pro</div>
+        <div class="price-amount">
+          <span class="amount">$4.99</span>
+          <span class="per">/month</span>
+        </div>
+        <div class="price-desc">For power users, creators, and developers.</div>
+        <ul class="price-features">
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg> Unlimited PCs</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg> 30-day history</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg> AI insights &amp; diagnosis</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg> Mobile apps (iOS + Android)</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg> Custom alerts (5 channels)</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg> Grafana endpoint</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg> CSV / JSON export</li>
+        </ul>
+        <a href="upgrade.html" class="price-btn primary">Subscribe to Pro</a>
+      </div>
+
+      <div class="price">
+        <div class="price-name">Team</div>
+        <div class="price-amount">
+          <span class="amount">$12</span>
+          <span class="per">/seat/month</span>
+        </div>
+        <div class="price-desc">For studios, labs, and small IT teams.</div>
+        <ul class="price-features">
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg> Everything in Pro</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg> Fleet dashboard</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg> Role-based access</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg> SSO (Google, Microsoft)</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg> Audit logs</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg> 1-year retention</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg> SLA-backed support</li>
+        </ul>
+        <a href="team.html" class="price-btn">Contact sales</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== FAQ ===================== -->
+  <section class="faq">
+    <div class="section-head">
+      <div class="section-tag">FAQ</div>
+      <h2>Common questions</h2>
+    </div>
+    <div class="faq-list">
+      <div class="faq-item">
+        <div class="faq-q" onclick="this.parentElement.classList.toggle('open')">
+          How is Pulse different from HWiNFO or Task Manager?
+          <span class="plus">+</span>
+        </div>
+        <div class="faq-a"><div class="faq-a-inner">
+          HWiNFO gives you depth (every sensor imaginable) with overwhelming UI. Task Manager gives you a quick glance. Pulse gives you <em>decisions</em> — AI-powered diagnosis that tells you what's actually happening and what to do. Plus mobile, alerts, and history.
+        </div></div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q" onclick="this.parentElement.classList.toggle('open')">
+          Does the agent run in the background all the time?
+          <span class="plus">+</span>
+        </div>
+        <div class="faq-a"><div class="faq-a-inner">
+          Yes, but it's designed to be invisible. The agent uses less than 0.5% CPU and around 80 MB RAM. It auto-starts with your OS and survives reboots. You won't notice it's there unless you open the dashboard.
+        </div></div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q" onclick="this.parentElement.classList.toggle('open')">
+          What data do you send to the cloud?
+          <span class="plus">+</span>
+        </div>
+        <div class="faq-a"><div class="faq-a-inner">
+          Just the metrics — CPU, RAM, temps, network speeds, etc. Never keystrokes, screen content, or file names. AI insights are sent to our inference API with the last hour of metrics only. You can self-host the AI model on Pro for full privacy.
+        </div></div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q" onclick="this.parentElement.classList.toggle('open')">
+          Can I cancel anytime?
+          <span class="plus">+</span>
+        </div>
+        <div class="faq-a"><div class="faq-a-inner">
+          Yes. One click in settings, no email gymnastics. Your data stays accessible for 30 days after cancellation, then is permanently deleted. Annual subscribers get a prorated refund.
+        </div></div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q" onclick="this.parentElement.classList.toggle('open')">
+          Is there a free trial of Pro?
+          <span class="plus">+</span>
+        </div>
+        <div class="faq-a"><div class="faq-a-inner">
+          Yes — 14 days, no credit card required. You get all Pro features including AI insights and mobile. At the end you can subscribe or auto-revert to Free. We don't dark-pattern you into paying.
+        </div></div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q" onclick="this.parentElement.classList.toggle('open')">
+          What platforms are supported?
+          <span class="plus">+</span>
+        </div>
+        <div class="faq-a"><div class="faq-a-inner">
+          Agent: Windows 10/11, macOS 12+, Ubuntu 20.04+ (other distros via .deb/.rpm). Dashboard: any modern browser. Mobile: iOS 16+ and Android 12+.
+        </div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== CTA ===================== -->
+  <section class="cta-section">
+    <div class="cta-card">
+      <h2>Stop guessing about your PC.</h2>
+      <p>Join 12,000+ power users, creators, and developers who trust Pulse to keep their systems healthy.</p>
+      <div class="hero-actions" style="margin-top: 8px;">
+        <a href="index.html" class="btn btn-primary">Start free</a>
+        <a href="upgrade.html" class="btn btn-pro">Try Pro free for 14 days</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== FOOTER ===================== -->
+  <footer>
+    <div class="footer-links">
+      <a href="index.html">Dashboard</a>
+      <a href="pro.html">Pro</a>
+      <a href="mobile.html">Mobile</a>
+      <a href="team.html">Team</a>
+      <a href="#pricing">Pricing</a>
+      <a href="#">Privacy</a>
+      <a href="#">Terms</a>
+      <a href="#">Status</a>
+    </div>
+    <p>© 2026 Pulse · Made with care for people who care about their hardware.</p>
+  </footer>
+
+</div>
+
+</body>
+</html>

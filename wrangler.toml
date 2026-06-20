@@ -1,0 +1,17 @@
+# Cloudflare Pages / Workers config
+# https://developers.cloudflare.com/pages/functions/wrangler-configuration/
+
+name = "pulse-monitor"
+compatibility_date = "2026-01-01"
+pages_build_output_dir = "."
+
+# Uncomment and customize when you add a Worker for the webhook handler:
+# [[env.production.vars]]
+# STRIPE_SECRET_KEY = "sk_live_REPLACE_ME"
+# STRIPE_WEBHOOK_SECRET = "whsec_REPLACE_ME"
+# SUPABASE_URL = "https://your-project.supabase.co"
+# SUPABASE_SERVICE_KEY = "REPLACE_ME"
+
+# [[env.preview.vars]]
+# STRIPE_SECRET_KEY = "sk_test_REPLACE_ME"
+# STRIPE_WEBHOOK_SECRET = "whsec_REPLACE_ME"

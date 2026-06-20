@@ -1,0 +1,15 @@
+# Cloudflare Pages redirects
+# https://developers.cloudflare.com/pages/configuration/redirects/
+
+# Root → landing page
+/                    /landing.html         302
+
+# Pretty URLs
+/dashboard           /index.html           301
+/pro                 /pro.html             301
+/mobile              /mobile.html          301
+/team                /team.html            301
+/upgrade             /upgrade.html         301
+
+# 404 fallback
+/*                   /landing.html         404

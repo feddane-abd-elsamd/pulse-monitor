@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Upgrade to Pulse Pro</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<!--
+  STRIPE INTEGRATION
+  ======================================================================
+  1. Sign up at https://stripe.com (free, test mode enabled by default)
+  2. Create products:
+     - Pulse Pro · $4.99/month  → copy the price ID
+     - Pulse Pro Annual · $39/year
+     - Pulse Team · $12/seat/month
+  3. Get your publishable key from Developers → API keys
+  4. Replace the placeholder values in STRIPE_CONFIG below
+  5. (Optional) For production: include https://js.stripe.com/v3/ script
+     and call stripe.redirectToCheckout() with a session ID from your backend
+  ======================================================================
+-->
+<style>
+  :root {
+    --bg-0: #07090f;
+    --bg-1: #0d111c;
+    --bg-2: #131826;
+    --bg-3: #1a2138;
+    --line: rgba(255, 255, 255, 0.06);
+    --line-strong: rgba(255, 255, 255, 0.12);
+    --text-0: #f5f7fb;
+    --text-1: #c2c8d6;
+    --text-2: #7a8295;
+    --text-3: #4a5168;
+    --accent: #5b8def;
+    --ok: #10d39c;
+    --grad-cool: linear-gradient(135deg, #5b8def 0%, #00d4ff 100%);
+    --grad-pro: linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%);
+    --grad-ok: linear-gradient(135deg, #10d39c 0%, #34d399 100%);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    min-height: 100%;
+    background: var(--bg-0);
+    color: var(--text-0);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-size: 15px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+  body::before {
+    content: ''; position: fixed; inset: 0;
+    background:
+      radial-gradient(ellipse at top, rgba(139, 92, 246, 0.12), transparent 50%),
+      radial-gradient(ellipse at bottom, rgba(91, 141, 239, 0.08), transparent 50%);
+    pointer-events: none;
+  }
+
+  .page {
+    position: relative;
+    max-width: 920px;
+    margin: 0 auto;
+    padding: 32px 28px 80px;
+  }
+
+  /* NAV */
+  .nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 40px;
+  }
+  .nav-brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    text-decoration: none;
+    color: var(--text-0);
+  }
+  .nav-brand .logo {
+    width: 36px; height: 36px;
+    border-radius: 10px;
+    background: var(--grad-cool);
+    display: grid; place-items: center;
+  }
+  .nav-brand .logo svg { width: 18px; height: 18px; color: white; }
+  .nav-brand h2 { font-size: 18px; font-weight: 800; letter-spacing: -0.02em; }
+  .nav-back {
+    color: var(--text-2);
+    text-decoration: none;
+    font-size: 13px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .nav-back:hover { color: var(--text-0); }
+
+  /* HEADER */
+  .upgrade-head {
+    text-align: center;
+    margin-bottom: 48px;
+  }
+  .upgrade-head h1 {
+    font-size: clamp(32px, 5vw, 48px);
+    font-weight: 900;
+    letter-spacing: -0.03em;
+    line-height: 1.1;
+    margin-bottom: 14px;
+  }
+  .upgrade-head h1 .grad {
+    background: var(--grad-pro);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .upgrade-head p {
+    font-size: 17px;
+    color: var(--text-2);
+    max-width: 520px;
+    margin: 0 auto;
+  }
+
+  /* BILLING TOGGLE */
+  .billing-toggle {
+    display: flex;
+    justify-content: center;
+    gap: 4px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    padding: 4px;
+    width: fit-content;
+    margin: 0 auto 32px;
+  }
+  .billing-toggle button {
+    padding: 8px 18px;
+    background: transparent;
+    border: none;
+    color: var(--text-2);
+    font-size: 13px;
+    font-weight: 600;
+    border-radius: 999px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    font-family: inherit;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .billing-toggle button.active {
+    background: var(--grad-pro);
+    color: white;
+  }
+  .billing-toggle button .save {
+    font-size: 10px;
+    background: rgba(255, 255, 255, 0.2);
+    padding: 2px 6px;
+    border-radius: 999px;
+    font-weight: 700;
+  }
+
+  /* PLAN GRID */
+  .plans {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 18px;
+    margin-bottom: 32px;
+  }
+  .plan {
+    background: linear-gradient(180deg, rgba(26, 33, 56, 0.5), rgba(13, 17, 28, 0.5));
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    padding: 32px;
+    position: relative;
+    transition: all 0.2s ease;
+  }
+  .plan:hover { border-color: var(--line-strong); transform: translateY(-2px); }
+  .plan.featured {
+    border-color: rgba(139, 92, 246, 0.4);
+    background: linear-gradient(180deg, rgba(139, 92, 246, 0.06), rgba(13, 17, 28, 0.5));
+  }
+  .plan-badge {
+    position: absolute;
+    top: -10px; left: 32px;
+    background: var(--grad-pro);
+    color: white;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    padding: 4px 10px;
+    border-radius: 999px;
+  }
+  .plan-name {
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text-2);
+    margin-bottom: 8px;
+    font-weight: 700;
+  }
+  .plan.featured .plan-name { color: var(--pro); }
+  .plan-price {
+    display: flex; align-items: baseline; gap: 6px;
+    margin-bottom: 4px;
+  }
+  .plan-price .amount {
+    font-size: 48px; font-weight: 800;
+    letter-spacing: -0.03em; line-height: 1;
+  }
+  .plan-price .per { font-size: 14px; color: var(--text-2); }
+  .plan-tag {
+    font-size: 13px;
+    color: var(--ok);
+    font-weight: 600;
+    margin-bottom: 20px;
+  }
+  .plan-features {
+    list-style: none;
+    margin: 20px 0 24px;
+  }
+  .plan-features li {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 7px 0;
+    font-size: 13px;
+    color: var(--text-1);
+  }
+  .plan-features svg {
+    width: 14px; height: 14px;
+    color: var(--ok);
+    flex-shrink: 0;
+    margin-top: 3px;
+  }
+
+  .subscribe-btn {
+    width: 100%;
+    padding: 12px;
+    border-radius: 10px;
+    border: 1px solid var(--line);
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--text-0);
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    font-family: inherit;
+  }
+  .subscribe-btn:hover { background: rgba(255, 255, 255, 0.08); }
+  .subscribe-btn.primary {
+    background: var(--grad-pro);
+    border-color: transparent;
+    box-shadow: 0 10px 30px -10px rgba(139, 92, 246, 0.5);
+  }
+  .subscribe-btn.primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 14px 40px -10px rgba(139, 92, 246, 0.6);
+  }
+
+  /* FAQ + TRUST */
+  .trust {
+    background: rgba(16, 211, 156, 0.04);
+    border: 1px solid rgba(16, 211, 156, 0.2);
+    border-radius: 14px;
+    padding: 24px;
+    margin-bottom: 32px;
+  }
+  .trust h3 {
+    font-size: 14px;
+    font-weight: 700;
+    margin-bottom: 12px;
+    color: var(--ok);
+  }
+  .trust-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+  }
+  .trust-item .ti-label {
+    font-size: 11px;
+    color: var(--text-2);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 4px;
+  }
+  .trust-item .ti-value {
+    font-size: 13px;
+    color: var(--text-0);
+    font-weight: 500;
+  }
+
+  .back-home {
+    text-align: center;
+    margin-top: 40px;
+  }
+  .back-home a {
+    color: var(--text-2);
+    text-decoration: none;
+    font-size: 13px;
+  }
+  .back-home a:hover { color: var(--text-0); }
+
+  @media (max-width: 720px) {
+    .plans { grid-template-columns: 1fr; }
+    .trust-row { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div class="page">
+
+  <div class="nav">
+    <a href="landing.html" class="nav-brand">
+      <div class="logo">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+        </svg>
+      </div>
+      <h2>Pulse</h2>
+    </a>
+    <a href="landing.html" class="nav-back">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/>
+      </svg>
+      Back to home
+    </a>
+  </div>
+
+  <div class="upgrade-head">
+    <h1>Upgrade to <span class="grad">Pulse Pro</span></h1>
+    <p>AI insights, 30-day history, mobile alerts, and unlimited machines. Cancel anytime.</p>
+  </div>
+
+  <div class="billing-toggle">
+    <button class="active" data-billing="monthly" onclick="setBilling('monthly')">Monthly</button>
+    <button data-billing="annual" onclick="setBilling('annual')">Annual <span class="save">Save 35%</span></button>
+  </div>
+
+  <div class="plans">
+    <div class="plan">
+      <div class="plan-name">Free</div>
+      <div class="plan-price">
+        <span class="amount">$0</span>
+        <span class="per">/forever</span>
+      </div>
+      <div class="plan-tag">Current plan</div>
+      <ul class="plan-features">
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg> 1 PC</li>
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg> Real-time monitoring</li>
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg> Smart tips</li>
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg> 24-hour history</li>
+      </ul>
+      <button class="subscribe-btn" disabled>Current plan</button>
+    </div>
+
+    <div class="plan featured">
+      <div class="plan-badge">Recommended</div>
+      <div class="plan-name">Pro</div>
+      <div class="plan-price">
+        <span class="amount" id="pro-amount">$4.99</span>
+        <span class="per" id="pro-per">/month</span>
+      </div>
+      <div class="plan-tag" id="pro-tag">Billed monthly · cancel anytime</div>
+      <ul class="plan-features">
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg> Unlimited PCs</li>
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg> 30-day history + timeline replay</li>
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg> AI-powered diagnosis</li>
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg> Mobile apps (iOS + Android)</li>
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg> Smart alerts · 5 channels</li>
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg> Grafana endpoint + exports</li>
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg> Priority support</li>
+      </ul>
+      <button class="subscribe-btn primary" onclick="checkout('pro')">Subscribe to Pro</button>
+    </div>
+  </div>
+
+  <!-- Team plan as secondary option -->
+  <div class="trust">
+    <h3>Need it for your team?</h3>
+    <p style="font-size: 13px; color: var(--text-2); margin-bottom: 16px;">
+      Pulse Team starts at <strong style="color: var(--text-0)">$12/seat/month</strong> with fleet dashboard, SSO, audit logs, and 1-year retention. Minimum 3 seats.
+    </p>
+    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+      <button class="subscribe-btn primary" style="max-width: 220px;" onclick="checkout('team')">Talk to sales</button>
+      <a href="team.html" class="subscribe-btn" style="max-width: 220px; text-align: center; text-decoration: none; line-height: 1.2; display: inline-flex; align-items: center; justify-content: center;">See Team demo</a>
+    </div>
+  </div>
+
+  <!-- Trust signals -->
+  <div class="trust">
+    <h3>✓ What you can count on</h3>
+    <div class="trust-row">
+      <div class="trust-item">
+        <div class="ti-label">Cancel anytime</div>
+        <div class="ti-value">One click, no email loops</div>
+      </div>
+      <div class="trust-item">
+        <div class="ti-label">Free 14-day trial</div>
+        <div class="ti-value">No credit card required</div>
+      </div>
+      <div class="trust-item">
+        <div class="ti-label">Data stays yours</div>
+        <div class="ti-value">Export &amp; delete anytime</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="back-home">
+    <a href="landing.html">← Back to all features</a>
+  </div>
+
+</div>
+
+<script>
+/* ================================================================
+   STRIPE CHECKOUT PLACEHOLDER
+   ================================================================
+   To make this real:
+   1. Sign up at https://stripe.com
+   2. Create two products with these prices:
+      - Pro Monthly: $4.99/month
+      - Pro Annual:  $39/year
+      - Team:         $12/seat/month
+   3. Replace the values in STRIPE_CONFIG below with your real keys
+   4. For full security, the recommended flow is:
+      - POST to YOUR_BACKEND /api/create-checkout-session
+      - Backend uses Stripe SDK with secret key to create a session
+      - Returns session.id to client
+      - Client calls stripe.redirectToCheckout({ sessionId })
+   5. For prototype demos only, you can use Stripe's Payment Links
+      (created in Dashboard) and skip the backend entirely.
+   ================================================================ */
+
+const STRIPE_CONFIG = {
+  publishableKey: 'pk_test_REPLACE_ME_WITH_YOUR_STRIPE_PUBLISHABLE_KEY',
+  proMonthlyPriceId: 'price_REPLACE_ME_PRO_MONTHLY',
+  proAnnualPriceId:  'price_REPLACE_ME_PRO_ANNUAL',
+  teamPriceId:       'price_REPLACE_ME_TEAM',
+  successUrl: window.location.origin + '/success.html',
+  cancelUrl:  window.location.origin + '/upgrade.html',
+};
+
+const PRICES = {
+  monthly: { amount: '$4.99', per: '/month', tag: 'Billed monthly · cancel anytime', priceId: STRIPE_CONFIG.proMonthlyPriceId },
+  annual:  { amount: '$39',   per: '/year',  tag: 'Billed annually · save 35%',       priceId: STRIPE_CONFIG.proAnnualPriceId  },
+};
+
+let currentBilling = 'monthly';
+
+function setBilling(mode) {
+  currentBilling = mode;
+  document.querySelectorAll('.billing-toggle button').forEach(b => b.classList.remove('active'));
+  document.querySelector(`[data-billing="${mode}"]`).classList.add('active');
+
+  const p = PRICES[mode];
+  $('pro-amount').textContent = p.amount;
+  $('pro-per').textContent = p.per;
+  $('pro-tag').textContent = p.tag;
+}
+
+function $(id) { return document.getElementById(id); }
+
+/* The checkout function.
+   In production, replace this with:
+     const res = await fetch('/api/create-checkout-session', {
+       method: 'POST',
+       body: JSON.stringify({ priceId: PRICES[currentBilling].priceId, quantity: 1 })
+     });
+     const { sessionId } = await res.json();
+     const stripe = Stripe(STRIPE_CONFIG.publishableKey);
+     await stripe.redirectToCheckout({ sessionId });
+*/
+function checkout(plan) {
+  const priceId = plan === 'pro' ? PRICES[currentBilling].priceId : STRIPE_CONFIG.teamPriceId;
+
+  // Check if keys are still placeholders
+  if (STRIPE_CONFIG.publishableKey.startsWith('pk_test_REPLACE')) {
+    alert(
+      '🔧 Stripe is not configured yet.\n\n' +
+      'To enable real checkout:\n' +
+      '1. Sign up at stripe.com\n' +
+      '2. Create products in your Dashboard\n' +
+      '3. Open upgrade.html and replace the placeholder values in STRIPE_CONFIG\n\n' +
+      'See DEPLOY.md for step-by-step instructions.'
+    );
+    return;
+  }
+
+  // Simulated flow for now
+  alert(
+    'Checkout would start here.\n\n' +
+    'Plan: ' + plan + '\n' +
+    'Billing: ' + currentBilling + '\n' +
+    'Price ID: ' + priceId + '\n\n' +
+    'In production, this redirects to Stripe Checkout.'
+  );
+
+  /* When ready, replace the alert above with:
+  const stripe = Stripe(STRIPE_CONFIG.publishableKey);
+  stripe.redirectToCheckout({
+    lineItems: [{ price: priceId, quantity: 1 }],
+    mode: 'subscription',
+    successUrl: STRIPE_CONFIG.successUrl,
+    cancelUrl:  STRIPE_CONFIG.cancelUrl,
+  });
+  */
+}
+
+// Initialize
+setBilling('monthly');
+</script>
+
+</body>
+</html>
